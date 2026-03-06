@@ -7,7 +7,7 @@ namespace NetatmoThermoSync.Commands;
 
 public sealed class AuthCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context)
+    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         AnsiConsole.MarkupLine("[bold yellow]Netatmo Setup[/]");
         AnsiConsole.WriteLine();

@@ -7,7 +7,7 @@ namespace NetatmoThermoSync.Commands;
 
 public sealed class DumpCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context)
+    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         var (config, tokens) = StatusCommand.LoadConfigOrFail();
         using var client = new NetatmoClient(config, tokens);

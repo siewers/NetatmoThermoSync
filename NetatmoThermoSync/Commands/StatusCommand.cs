@@ -8,7 +8,7 @@ namespace NetatmoThermoSync.Commands;
 
 public sealed class StatusCommand : AsyncCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context)
+    public override async Task<int> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
     {
         var (config, tokens) = LoadConfigOrFail();
         using var client = new NetatmoClient(config, tokens);

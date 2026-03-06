@@ -20,7 +20,7 @@ public sealed class SyncSettings : CommandSettings
 
 public sealed class SyncCommand : AsyncCommand<SyncSettings>
 {
-    public override async Task<int> ExecuteAsync(CommandContext context, SyncSettings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, SyncSettings settings, CancellationToken cancellationToken)
     {
         var (config, tokens) = StatusCommand.LoadConfigOrFail();
         using var client = new NetatmoClient(config, tokens);

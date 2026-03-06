@@ -26,7 +26,7 @@ public sealed class SetTempSettings : CommandSettings
 
 public sealed class SetTempCommand : AsyncCommand<SetTempSettings>
 {
-    public override async Task<int> ExecuteAsync(CommandContext context, SetTempSettings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, SetTempSettings settings, CancellationToken cancellationToken)
     {
         var (config, tokens) = StatusCommand.LoadConfigOrFail();
         using var client = new NetatmoClient(config, tokens);
