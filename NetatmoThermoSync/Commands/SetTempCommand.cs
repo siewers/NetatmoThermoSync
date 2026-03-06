@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace NetatmoThermoSync.Commands;
 
-public class SetTempSettings : CommandSettings
+public sealed class SetTempSettings : CommandSettings
 {
     [CommandArgument(0, "<ROOM>")]
     [Description("Room name (case-insensitive partial match)")]
@@ -24,7 +24,7 @@ public class SetTempSettings : CommandSettings
     public string? HomeName { get; set; }
 }
 
-public class SetTempCommand : AsyncCommand<SetTempSettings>
+public sealed class SetTempCommand : AsyncCommand<SetTempSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, SetTempSettings settings)
     {
@@ -38,13 +38,13 @@ public class SetTempCommand : AsyncCommand<SetTempSettings>
             ? homes.FirstOrDefault(h =>
                 h.Name.Equals(settings.HomeName, StringComparison.OrdinalIgnoreCase) ||
                 h.Id == settings.HomeName)
-              ?? throw new Exception($"Home '{settings.HomeName}' not found.")
+              ?? throw new NetatmoException($"Home '{settings.HomeName}' not found.")
             : homes.FirstOrDefault()
-              ?? throw new Exception("No homes found.");
+              ?? throw new NetatmoException("No homes found.");
 
         var room = home.Rooms.FirstOrDefault(r =>
             r.Name.Contains(settings.RoomName, StringComparison.OrdinalIgnoreCase))
-            ?? throw new Exception($"Room matching '{settings.RoomName}' not found.");
+            ?? throw new NetatmoException($"Room matching '{settings.RoomName}' not found.");
 
         int? endTime = settings.DurationMinutes.HasValue
             ? (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() + settings.DurationMinutes.Value * 60)

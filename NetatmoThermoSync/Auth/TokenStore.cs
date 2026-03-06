@@ -3,7 +3,7 @@ using NetatmoThermoSync.Models;
 
 namespace NetatmoThermoSync.Auth;
 
-public class TokenStore
+public sealed class TokenStore
 {
     private static readonly string ConfigDir = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

@@ -7,7 +7,7 @@ using Spectre.Console.Cli;
 
 namespace NetatmoThermoSync.Commands;
 
-public class SyncSettings : CommandSettings
+public sealed class SyncSettings : CommandSettings
 {
     [CommandOption("--dry-run")]
     [Description("Show what would be synced without making changes")]
@@ -18,7 +18,7 @@ public class SyncSettings : CommandSettings
     public string? HomeName { get; set; }
 }
 
-public class SyncCommand : AsyncCommand<SyncSettings>
+public sealed class SyncCommand : AsyncCommand<SyncSettings>
 {
     public override async Task<int> ExecuteAsync(CommandContext context, SyncSettings settings)
     {
@@ -32,7 +32,7 @@ public class SyncCommand : AsyncCommand<SyncSettings>
         }
 
         // Authenticate via web session for truetemperature access
-        var webAuth = new WebSessionAuth();
+        using var webAuth = new WebSessionAuth();
         AnsiConsole.MarkupLine("[dim]Logging in via web session...[/]");
         await webAuth.LoginAsync(config.NetatmoEmail, config.NetatmoPassword);
 
@@ -61,9 +61,9 @@ public class SyncCommand : AsyncCommand<SyncSettings>
             ? homes.FirstOrDefault(h =>
                 h.Name.Equals(settings.HomeName, StringComparison.OrdinalIgnoreCase) ||
                 h.Id == settings.HomeName)
-              ?? throw new Exception($"Home '{settings.HomeName}' not found.")
+              ?? throw new NetatmoException($"Home '{settings.HomeName}' not found.")
             : homes.FirstOrDefault()
-              ?? throw new Exception("No homes found.");
+              ?? throw new NetatmoException("No homes found.");
 
         var status = await client.GetHomeStatusAsync(home.Id);
         var roomStatuses = status.Body?.Home?.Rooms ?? [];
@@ -72,7 +72,7 @@ public class SyncCommand : AsyncCommand<SyncSettings>
         // Get weather station indoor module readings
         var indoorReadings = await GetIndoorReadingsAsync(client);
 
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        var timestamp = DateTime.Now.ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
         AnsiConsole.MarkupLine($"[dim]{Markup.Escape($"[{timestamp}]")}[/] Syncing [bold]{Markup.Escape(home.Name)}[/]...");
 
         if (indoorReadings.Count == 0)
@@ -114,6 +114,13 @@ public class SyncCommand : AsyncCommand<SyncSettings>
             var valveTemp = rs.MeasuredTemperature.Value;
             var delta = sensor.Temperature - valveTemp;
             var valveNames = string.Join(", ", valves.Select(v => Markup.Escape(v.Name)));
+
+            if (Math.Abs(delta) < 0.05)
+            {
+                AnsiConsole.MarkupLine(
+                    $"  [bold]{Markup.Escape(room.Name)}[/] — sensor [blue]{Markup.Escape(sensor.Name)}[/] [cyan]{sensor.Temperature:F1}°C[/], valve [yellow]{valveTemp:F1}°C[/] [dim](no correction needed)[/]");
+                continue;
+            }
 
             AnsiConsole.MarkupLine(
                 $"  [bold]{Markup.Escape(room.Name)}[/] — sensor [blue]{Markup.Escape(sensor.Name)}[/] [cyan]{sensor.Temperature:F1}°C[/], valve [yellow]{valveTemp:F1}°C[/] (delta {delta:+0.0;-0.0}°C) → [green]{valveNames}[/]");
@@ -173,5 +180,5 @@ public class SyncCommand : AsyncCommand<SyncSettings>
         return readings;
     }
 
-    private record IndoorReading(string Name, double Temperature, string ModuleId);
+    private sealed record IndoorReading(string Name, double Temperature, string ModuleId);
 }

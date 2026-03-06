@@ -5,7 +5,7 @@ using NetatmoThermoSync.Models;
 
 namespace NetatmoThermoSync.Api;
 
-public class NetatmoClient : IDisposable
+public sealed class NetatmoClient : IDisposable
 {
     private const string BaseUrl = "https://api.netatmo.com/api";
     private readonly HttpClient _http = new();
@@ -35,10 +35,10 @@ public class NetatmoClient : IDisposable
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"homesdata failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"homesdata failed ({response.StatusCode}): {json}");
 
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomesDataBody)
-            ?? throw new Exception("Failed to parse homesdata response.");
+            ?? throw new NetatmoException("Failed to parse homesdata response.");
     }
 
     public async Task<NetatmoResponse<HomeStatusBody>> GetHomeStatusAsync(string homeId)
@@ -48,10 +48,10 @@ public class NetatmoClient : IDisposable
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"homestatus failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"homestatus failed ({response.StatusCode}): {json}");
 
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomeStatusBody)
-            ?? throw new Exception("Failed to parse homestatus response.");
+            ?? throw new NetatmoException("Failed to parse homestatus response.");
     }
 
     public async Task<NetatmoResponse<StationsDataBody>> GetStationsDataAsync()
@@ -61,10 +61,10 @@ public class NetatmoClient : IDisposable
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"getstationsdata failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"getstationsdata failed ({response.StatusCode}): {json}");
 
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseStationsDataBody)
-            ?? throw new Exception("Failed to parse getstationsdata response.");
+            ?? throw new NetatmoException("Failed to parse getstationsdata response.");
     }
 
     public async Task SetRoomThermPointAsync(string homeId, string roomId, double temp, int? endTime = null)
@@ -79,15 +79,19 @@ public class NetatmoClient : IDisposable
         };
 
         if (endTime.HasValue)
-            parameters["endtime"] = endTime.Value.ToString();
+            parameters["endtime"] = endTime.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         var content = new FormUrlEncodedContent(parameters);
         var response = await _http.PostAsync($"{BaseUrl}/setroomthermpoint", content);
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"setroomthermpoint failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"setroomthermpoint failed ({response.StatusCode}): {json}");
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        _http.Dispose();
+        GC.SuppressFinalize(this);
+    }
 }

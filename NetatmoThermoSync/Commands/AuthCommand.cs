@@ -5,7 +5,7 @@ using Spectre.Console.Cli;
 
 namespace NetatmoThermoSync.Commands;
 
-public class AuthCommand : AsyncCommand
+public sealed class AuthCommand : AsyncCommand
 {
     public override async Task<int> ExecuteAsync(CommandContext context)
     {

@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace NetatmoThermoSync.Auth;
 
-public class OAuthFlow
+public sealed class OAuthFlow
 {
     private const string AuthorizeUrl = "https://api.netatmo.com/oauth2/authorize";
     private const string TokenUrl = "https://api.netatmo.com/oauth2/token";
@@ -70,7 +70,7 @@ public class OAuthFlow
             response.StatusCode = 400;
             await response.OutputStream.WriteAsync(errorHtml);
             response.Close();
-            throw new Exception($"Authorization failed: {error}");
+            throw new NetatmoException($"Authorization failed: {error}");
         }
 
         if (state != expectedState)
@@ -79,7 +79,7 @@ public class OAuthFlow
             response.StatusCode = 400;
             await response.OutputStream.WriteAsync(stateHtml);
             response.Close();
-            throw new Exception("OAuth state mismatch — possible CSRF attack.");
+            throw new NetatmoException("OAuth state mismatch — possible CSRF attack.");
         }
 
         byte[] successHtml = "<html><body><h1>Authorization Successful</h1><p>You can close this window and return to the terminal.</p></body></html>"u8.ToArray();
@@ -88,7 +88,7 @@ public class OAuthFlow
         response.Close();
         listener.Stop();
 
-        return code ?? throw new Exception("No authorization code received.");
+        return code ?? throw new NetatmoException("No authorization code received.");
     }
 
     private static async Task<TokenData> ExchangeCodeAsync(AppConfig config, string code)
@@ -108,10 +108,10 @@ public class OAuthFlow
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"Token exchange failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"Token exchange failed ({response.StatusCode}): {json}");
 
         var tokens = JsonSerializer.Deserialize(json, AppJsonContext.Default.TokenData)
-            ?? throw new Exception("Failed to parse token response.");
+            ?? throw new NetatmoException("Failed to parse token response.");
 
         // Compute absolute expiry time
         tokens = tokens with
@@ -137,10 +137,10 @@ public class OAuthFlow
         var json = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"Token refresh failed ({response.StatusCode}): {json}");
+            throw new NetatmoException($"Token refresh failed ({response.StatusCode}): {json}");
 
         var newTokens = JsonSerializer.Deserialize(json, AppJsonContext.Default.TokenData)
-            ?? throw new Exception("Failed to parse refresh token response.");
+            ?? throw new NetatmoException("Failed to parse refresh token response.");
 
         newTokens = newTokens with
         {

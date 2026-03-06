@@ -34,7 +34,7 @@ public record Home
     public List<Room> Rooms { get; init; } = [];
 
     [JsonPropertyName("modules")]
-    public List<Module> Modules { get; init; } = [];
+    public List<HomeModule> Modules { get; init; } = [];
 }
 
 public record Room
@@ -52,7 +52,7 @@ public record Room
     public List<string> ModuleIds { get; init; } = [];
 }
 
-public record Module
+public record HomeModule
 {
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";

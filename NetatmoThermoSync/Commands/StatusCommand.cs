@@ -6,7 +6,7 @@ using Spectre.Console.Cli;
 
 namespace NetatmoThermoSync.Commands;
 
-public class StatusCommand : AsyncCommand
+public sealed class StatusCommand : AsyncCommand
 {
     public override async Task<int> ExecuteAsync(CommandContext context)
     {
@@ -147,9 +147,9 @@ public class StatusCommand : AsyncCommand
     internal static (AppConfig config, TokenData tokens) LoadConfigOrFail()
     {
         var config = TokenStore.LoadConfig()
-            ?? throw new Exception("Not configured. Run 'auth' first.");
+            ?? throw new NetatmoException("Not configured. Run 'auth' first.");
         var tokens = TokenStore.LoadTokens()
-            ?? throw new Exception("Not authenticated. Run 'auth' first.");
+            ?? throw new NetatmoException("Not authenticated. Run 'auth' first.");
         return (config, tokens);
     }
 }

@@ -9,7 +9,7 @@ namespace NetatmoThermoSync.Auth;
 /// Authenticates via Netatmo's web login flow (cookie-based session).
 /// Required for the /api/truetemperature endpoint which doesn't accept third-party OAuth tokens.
 /// </summary>
-public class WebSessionAuth
+public sealed class WebSessionAuth : IDisposable
 {
     private const string AuthBase = "https://auth.netatmo.com";
     private const string UserAgent = "netatmo-home";
@@ -33,7 +33,7 @@ public class WebSessionAuth
         // Step 1: Get initial session cookie
         var loginPage = await _http.GetAsync($"{AuthBase}/en-us/access/login");
         if (!loginPage.IsSuccessStatusCode)
-            throw new Exception($"Failed to load login page: {loginPage.StatusCode}");
+            throw new NetatmoException($"Failed to load login page: {loginPage.StatusCode}");
 
         // Step 2: Set required cookie
         _cookies.Add(new Uri("https://netatmo.com"), new Cookie("netatmocomlast_app_used", "app_thermostat", "/", ".netatmo.com"));
@@ -41,12 +41,12 @@ public class WebSessionAuth
         // Step 3: Get CSRF token
         var csrfResponse = await _http.GetAsync($"{AuthBase}/access/csrf");
         if (!csrfResponse.IsSuccessStatusCode)
-            throw new Exception($"Failed to get CSRF token: {csrfResponse.StatusCode}");
+            throw new NetatmoException($"Failed to get CSRF token: {csrfResponse.StatusCode}");
 
         var csrfJson = await csrfResponse.Content.ReadAsStringAsync();
         var csrfDoc = JsonDocument.Parse(csrfJson);
         var csrfToken = csrfDoc.RootElement.GetProperty("token").GetString()
-            ?? throw new Exception("CSRF token not found in response");
+            ?? throw new NetatmoException("CSRF token not found in response");
 
         // Step 4: Submit login credentials
         var loginPayload = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -81,7 +81,7 @@ public class WebSessionAuth
         }
 
         if (tokenCookie is null)
-            throw new Exception("Login succeeded but access token cookie not found. Check your credentials.");
+            throw new NetatmoException("Login succeeded but access token cookie not found. Check your credentials.");
 
         _accessToken = tokenCookie.Value.Replace("%7C", "|");
         return true;
@@ -90,7 +90,7 @@ public class WebSessionAuth
     public async Task SetTrueTemperatureAsync(string homeId, string roomId, double currentTemp, double correctedTemp)
     {
         if (_accessToken is null)
-            throw new Exception("Not authenticated. Call LoginAsync first.");
+            throw new NetatmoException("Not authenticated. Call LoginAsync first.");
 
         var payload = new TrueTemperatureRequest
         {
@@ -111,6 +111,12 @@ public class WebSessionAuth
         var responseJson = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
-            throw new Exception($"truetemperature failed ({response.StatusCode}): {responseJson}");
+            throw new NetatmoException($"truetemperature failed ({response.StatusCode}): {responseJson}");
+    }
+
+    public void Dispose()
+    {
+        _http.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
