@@ -4,12 +4,6 @@ namespace NetatmoThermoSync.Models;
 
 public sealed record AppConfig
 {
-    [JsonPropertyName("client_id")]
-    public string ClientId { get; init; } = "";
-
-    [JsonPropertyName("client_secret")]
-    public string ClientSecret { get; init; } = "";
-
     [JsonPropertyName("netatmo_email")]
     public string? NetatmoEmail { get; init; }
 

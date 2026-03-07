@@ -5,7 +5,6 @@ namespace NetatmoThermoSync.Models;
 [JsonSerializable(typeof(NetatmoResponse<HomesDataBody>))]
 [JsonSerializable(typeof(NetatmoResponse<HomeStatusBody>))]
 [JsonSerializable(typeof(NetatmoResponse<StationsDataBody>))]
-[JsonSerializable(typeof(TokenData))]
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(WebSessionData))]
 [JsonSerializable(typeof(TrueTemperatureRequest))]

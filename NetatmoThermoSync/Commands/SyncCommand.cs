@@ -32,12 +32,12 @@ public static class SyncCommand
 
     private static async Task<int> ExecuteAsync(bool dryRun, string? homeName, CancellationToken cancellationToken)
     {
-        var (config, tokens) = StatusCommand.LoadConfigOrFail();
-        using var client = new NetatmoClient(config, tokens);
+        var config = StatusCommand.LoadConfigOrFail();
 
-        // Authenticate via web session for truetemperature access (uses cached session when available)
+        // Authenticate via web session (uses cached session when available)
         using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
         await webAuth.LoginAsync(cancellationToken);
+        using var client = new NetatmoClient(webAuth);
 
         if (dryRun)
         {
@@ -80,7 +80,7 @@ public static class SyncCommand
 
         if (indoorReadings.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]  No weather station indoor modules found. Run 'auth' again to grant read_station scope.[/]");
+            AnsiConsole.MarkupLine("[yellow]  No weather station indoor modules found.[/]");
             return;
         }
 

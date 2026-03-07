@@ -7,7 +7,8 @@ namespace NetatmoThermoSync.Auth;
 
 /// <summary>
 ///     Authenticates via Netatmo's web login flow (cookie-based session).
-///     Required for the /api/truetemperature endpoint which doesn't accept third-party OAuth tokens.
+///     The resulting access token works with both the public API and the
+///     undocumented /api/truetemperature endpoint.
 /// </summary>
 public sealed class WebSessionAuth : IDisposable
 {
@@ -28,13 +29,13 @@ public sealed class WebSessionAuth : IDisposable
         _http.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
-    private string? AccessToken { get; set; }
+    public string? AccessToken { get; private set; }
 
     public void Dispose() => _http.Dispose();
 
     /// <summary>
     ///     Tries the cached web session token first. Falls back to a full login only if no
-    ///     cached token exists. Re-auth on API rejection is handled by <see cref="SetTrueTemperatureAsync" />.
+    ///     cached token exists.
     /// </summary>
     public async Task LoginAsync(CancellationToken cancellationToken = default)
     {
@@ -48,6 +49,15 @@ public sealed class WebSessionAuth : IDisposable
         await FullLoginAsync(cancellationToken);
     }
 
+    /// <summary>
+    ///     Attempts to re-authenticate when an API call returns 401/403.
+    ///     Tries the refresh token first, then falls back to a full login.
+    /// </summary>
+    public async Task<bool> TryReauthenticateAsync(CancellationToken cancellationToken)
+    {
+        return await TryRefreshSessionAsync(cancellationToken) || await TryFullLoginAsync(cancellationToken);
+    }
+
     public async Task SetTrueTemperatureAsync(string homeId, string roomId, double currentTemp, double correctedTemp, CancellationToken cancellationToken = default)
     {
         if (AccessToken is null)
@@ -59,8 +69,7 @@ public sealed class WebSessionAuth : IDisposable
 
         if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
         {
-            // Try refreshing the session before doing a full login
-            if (await TryRefreshSessionAsync(cancellationToken) || await TryFullLoginAsync(cancellationToken))
+            if (await TryReauthenticateAsync(cancellationToken))
             {
                 response = await SendTrueTemperatureAsync(homeId, roomId, currentTemp, correctedTemp, cancellationToken);
             }
@@ -100,11 +109,11 @@ public sealed class WebSessionAuth : IDisposable
 
         // Grab the potentially refreshed refresh token
         var refreshCookie = _cookies.GetCookies(new Uri("https://auth.netatmo.com"))["authnetatmocomrefresh_token"];
-        TokenStore.SaveWebSession(new WebSessionData
+        await TokenStore.SaveWebSession(new WebSessionData
         {
             AccessToken = AccessToken,
             RefreshToken = refreshCookie?.Value ?? cached.RefreshToken,
-        });
+        }, cancellationToken);
 
         return true;
     }
@@ -166,11 +175,11 @@ public sealed class WebSessionAuth : IDisposable
         // Save both access token and refresh token for session reuse
         var refreshCookie = _cookies.GetCookies(new Uri("https://auth.netatmo.com"))["authnetatmocomrefresh_token"];
 
-        TokenStore.SaveWebSession(new WebSessionData
+        await TokenStore.SaveWebSession(new WebSessionData
         {
             AccessToken = AccessToken,
             RefreshToken = refreshCookie?.Value,
-        });
+        }, cancellationToken);
     }
 
     private string? ExtractAccessToken()

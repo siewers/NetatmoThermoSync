@@ -1,5 +1,6 @@
 using System.CommandLine;
 using NetatmoThermoSync.Api;
+using NetatmoThermoSync.Auth;
 using Spectre.Console;
 
 namespace NetatmoThermoSync.Commands;
@@ -35,8 +36,10 @@ public static class SetTempCommand
 
     private static async Task<int> ExecuteAsync(string roomName, double temperature, int? durationMinutes, string? homeName, CancellationToken cancellationToken)
     {
-        var (config, tokens) = StatusCommand.LoadConfigOrFail();
-        using var client = new NetatmoClient(config, tokens);
+        var config = StatusCommand.LoadConfigOrFail();
+        using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
+        await webAuth.LoginAsync(cancellationToken);
+        using var client = new NetatmoClient(webAuth);
 
         var homesData = await client.GetHomesDataAsync(cancellationToken);
         var homes = homesData.Body?.Homes ?? [];
