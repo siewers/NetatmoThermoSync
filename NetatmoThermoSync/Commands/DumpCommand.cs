@@ -17,7 +17,7 @@ public static class DumpCommand
 
     private static async Task<int> ExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var config = StatusCommand.LoadConfigOrFail();
+        var config = await StatusCommand.LoadConfigOrFail(cancellationToken);
         using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
         await webAuth.LoginAsync(cancellationToken);
         using var client = new NetatmoClient(webAuth);

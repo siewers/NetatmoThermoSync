@@ -16,14 +16,14 @@ public static class TokenStore
         Directory.CreateDirectory(ConfigDir);
     }
 
-    public static AppConfig? LoadConfig()
+    public static async Task<AppConfig?> LoadConfig(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(ConfigPath))
         {
             return null;
         }
 
-        var json = File.ReadAllText(ConfigPath);
+        var json = await File.ReadAllTextAsync(ConfigPath, cancellationToken);
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig);
     }
 
@@ -38,7 +38,7 @@ public static class TokenStore
         }
     }
 
-    public static WebSessionData? LoadWebSession()
+    public static async Task<WebSessionData?> LoadWebSession(CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(ConfigDir, "websession.json");
         if (!File.Exists(path))
@@ -46,7 +46,7 @@ public static class TokenStore
             return null;
         }
 
-        var json = File.ReadAllText(path);
+        var json = await File.ReadAllTextAsync(path, cancellationToken);
         return JsonSerializer.Deserialize(json, AppJsonContext.Default.WebSessionData);
     }
 

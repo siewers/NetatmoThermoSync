@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using NetatmoThermoSync.Auth;
 using NetatmoThermoSync.Models;
@@ -10,8 +11,8 @@ namespace NetatmoThermoSync.Api;
 public sealed class NetatmoClient : IDisposable
 {
     private const string BaseUrl = "https://api.netatmo.com/api";
-    private readonly HttpClient _http = new();
     private readonly WebSessionAuth _auth;
+    private readonly HttpClient _http = new();
 
     public NetatmoClient(WebSessionAuth auth)
     {
@@ -21,23 +22,38 @@ public sealed class NetatmoClient : IDisposable
 
     public void Dispose() => _http.Dispose();
 
-    private async Task<string> SendAsync(string url, CancellationToken cancellationToken, HttpContent? content = null)
+    private async Task<HttpResponseMessage> SendWithRetryAsync(HttpMethod method, string url, Func<HttpContent>? contentFactory, CancellationToken cancellationToken)
     {
-        var response = content is not null
-            ? await _http.PostAsync(url, content, cancellationToken)
-            : await _http.GetAsync(url, cancellationToken);
+        using var request = new HttpRequestMessage(method, url);
+        if (contentFactory is not null)
+        {
+            request.Content = contentFactory();
+        }
+
+        var response = await _http.SendAsync(request, cancellationToken);
 
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
             if (await _auth.TryReauthenticateAsync(cancellationToken))
             {
                 _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _auth.AccessToken);
-                response = content is not null
-                    ? await _http.PostAsync(url, content, cancellationToken)
-                    : await _http.GetAsync(url, cancellationToken);
+
+                using var retryRequest = new HttpRequestMessage(method, url);
+                if (contentFactory is not null)
+                {
+                    retryRequest.Content = contentFactory();
+                }
+
+                response = await _http.SendAsync(retryRequest, cancellationToken);
             }
         }
 
+        return response;
+    }
+
+    private async Task<string> GetJsonAsync(string url, CancellationToken cancellationToken)
+    {
+        var response = await SendWithRetryAsync(HttpMethod.Get, url, null, cancellationToken);
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -50,41 +66,67 @@ public sealed class NetatmoClient : IDisposable
 
     public async Task<NetatmoResponse<HomesDataBody>> GetHomesDataAsync(CancellationToken cancellationToken = default)
     {
-        var json = await SendAsync($"{BaseUrl}/homesdata", cancellationToken);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomesDataBody)
-            ?? throw new NetatmoException("Failed to parse homesdata response.");
+        var json = await GetJsonAsync($"{BaseUrl}/homesdata", cancellationToken);
+        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomesDataBody) ?? throw new NetatmoException("Failed to parse homesdata response.");
     }
 
     public async Task<NetatmoResponse<HomeStatusBody>> GetHomeStatusAsync(string homeId, CancellationToken cancellationToken = default)
     {
-        var json = await SendAsync($"{BaseUrl}/homestatus?home_id={Uri.EscapeDataString(homeId)}", cancellationToken);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomeStatusBody)
-            ?? throw new NetatmoException("Failed to parse homestatus response.");
+        var json = await GetJsonAsync($"{BaseUrl}/homestatus?home_id={Uri.EscapeDataString(homeId)}", cancellationToken);
+        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseHomeStatusBody) ?? throw new NetatmoException("Failed to parse homestatus response.");
     }
 
     public async Task<NetatmoResponse<StationsDataBody>> GetStationsDataAsync(CancellationToken cancellationToken = default)
     {
-        var json = await SendAsync($"{BaseUrl}/getstationsdata", cancellationToken);
-        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseStationsDataBody)
-            ?? throw new NetatmoException("Failed to parse getstationsdata response.");
+        var json = await GetJsonAsync($"{BaseUrl}/getstationsdata", cancellationToken);
+        return JsonSerializer.Deserialize(json, AppJsonContext.Default.NetatmoResponseStationsDataBody) ?? throw new NetatmoException("Failed to parse getstationsdata response.");
     }
 
     public async Task SetRoomThermPointAsync(string homeId, string roomId, double temp, int? endTime = null, CancellationToken cancellationToken = default)
     {
-        var parameters = new Dictionary<string, string>
+        var response = await SendWithRetryAsync(HttpMethod.Post, $"{BaseUrl}/setroomthermpoint", () =>
         {
-            ["home_id"] = homeId,
-            ["room_id"] = roomId,
-            ["mode"] = "manual",
-            ["temp"] = temp.ToString("F1", CultureInfo.InvariantCulture),
-        };
+            var parameters = new Dictionary<string, string>
+            {
+                ["home_id"] = homeId,
+                ["room_id"] = roomId,
+                ["mode"] = "manual",
+                ["temp"] = temp.ToString("F1", CultureInfo.InvariantCulture),
+            };
 
-        if (endTime.HasValue)
+            if (endTime.HasValue)
+            {
+                parameters["endtime"] = endTime.Value.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return new FormUrlEncodedContent(parameters);
+        }, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
         {
-            parameters["endtime"] = endTime.Value.ToString(CultureInfo.InvariantCulture);
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new NetatmoException($"setroomthermpoint failed ({response.StatusCode}): {json}");
         }
+    }
 
-        var content = new FormUrlEncodedContent(parameters);
-        await SendAsync($"{BaseUrl}/setroomthermpoint", cancellationToken, content);
+    public async Task SetTrueTemperatureAsync(string homeId, string roomId, double currentTemp, double correctedTemp, CancellationToken cancellationToken = default)
+    {
+        var response = await SendWithRetryAsync(HttpMethod.Post, $"{BaseUrl}/truetemperature", () =>
+            new StringContent(
+                JsonSerializer.Serialize(new TrueTemperatureRequest
+                {
+                    HomeId = homeId,
+                    RoomId = roomId,
+                    CurrentTemperature = currentTemp,
+                    CorrectedTemperature = correctedTemp,
+                }, AppJsonContext.Default.TrueTemperatureRequest),
+                Encoding.UTF8,
+                "application/json"), cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new NetatmoException($"truetemperature failed ({response.StatusCode}): {json}");
+        }
     }
 }

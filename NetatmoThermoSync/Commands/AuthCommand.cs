@@ -19,7 +19,7 @@ public static class AuthCommand
         AnsiConsole.MarkupLine("[bold yellow]Netatmo Setup[/]");
         AnsiConsole.WriteLine();
 
-        var existingConfig = TokenStore.LoadConfig();
+        var existingConfig = await TokenStore.LoadConfig(cancellationToken);
 
         AnsiConsole.MarkupLine("[bold]Netatmo account credentials[/]");
 

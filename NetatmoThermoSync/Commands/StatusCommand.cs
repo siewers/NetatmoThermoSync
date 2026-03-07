@@ -17,7 +17,7 @@ public static class StatusCommand
 
     private static async Task<int> ExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken)
     {
-        var config = LoadConfigOrFail();
+        var config = await LoadConfigOrFail(cancellationToken);
         using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
         await webAuth.LoginAsync(cancellationToken);
         using var client = new NetatmoClient(webAuth);
@@ -165,8 +165,8 @@ public static class StatusCommand
         return 0;
     }
 
-    internal static AppConfig LoadConfigOrFail()
+    internal static async Task<AppConfig> LoadConfigOrFail(CancellationToken cancellationToken)
     {
-        return TokenStore.LoadConfig() ?? throw new NetatmoException("Not configured. Run 'auth' first.");
+        return await TokenStore.LoadConfig(cancellationToken) ?? throw new NetatmoException("Not configured. Run 'auth' first.");
     }
 }

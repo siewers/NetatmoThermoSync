@@ -36,7 +36,7 @@ public static class SetTempCommand
 
     private static async Task<int> ExecuteAsync(string roomName, double temperature, int? durationMinutes, string? homeName, CancellationToken cancellationToken)
     {
-        var config = StatusCommand.LoadConfigOrFail();
+        var config = await StatusCommand.LoadConfigOrFail(cancellationToken);
         using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
         await webAuth.LoginAsync(cancellationToken);
         using var client = new NetatmoClient(webAuth);

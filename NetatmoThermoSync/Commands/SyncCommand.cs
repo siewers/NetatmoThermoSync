@@ -32,7 +32,7 @@ public static class SyncCommand
 
     private static async Task<int> ExecuteAsync(bool dryRun, string? homeName, CancellationToken cancellationToken)
     {
-        var config = StatusCommand.LoadConfigOrFail();
+        var config = await StatusCommand.LoadConfigOrFail(cancellationToken);
 
         // Authenticate via web session (uses cached session when available)
         using var webAuth = new WebSessionAuth(config.GetNetatmoCredentials());
@@ -46,7 +46,7 @@ public static class SyncCommand
 
         try
         {
-            await RunSyncCycleAsync(client, webAuth, dryRun, homeName, config, cancellationToken);
+            await RunSyncCycleAsync(client, dryRun, homeName, config, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -57,7 +57,7 @@ public static class SyncCommand
         return 0;
     }
 
-    private static async Task RunSyncCycleAsync(NetatmoClient client, WebSessionAuth webAuth, bool dryRun, string? homeName, AppConfig config, CancellationToken cancellationToken)
+    private static async Task RunSyncCycleAsync(NetatmoClient client, bool dryRun, string? homeName, AppConfig config, CancellationToken cancellationToken)
     {
         var homesData = await client.GetHomesDataAsync(cancellationToken);
         var homes = homesData.Body?.Homes ?? [];
@@ -141,7 +141,7 @@ public static class SyncCommand
 
             if (!dryRun)
             {
-                await webAuth.SetTrueTemperatureAsync(home.Id, room.Id, valveTemp, sensor.Temperature, cancellationToken);
+                await client.SetTrueTemperatureAsync(home.Id, room.Id, valveTemp, sensor.Temperature, cancellationToken);
             }
 
             syncCount++;
