@@ -27,9 +27,6 @@ dotnet publish -c Release
 
 # Authenticate
 ./NetatmoTrueTempSync auth login
-
-# Clear stored credentials and session
-./NetatmoTrueTempSync auth logout
 ```
 
 The `auth login` command prompts for your Netatmo email and password, then performs a web session login. Credentials and session tokens are stored securely using the OS secret store (Keychain on macOS, secret-tool on Linux, file-based fallback otherwise).
