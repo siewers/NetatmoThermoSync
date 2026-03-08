@@ -36,6 +36,12 @@ Use `auth logout` to clear all stored credentials and session data.
 ## Usage
 
 ```sh
+# Authenticate with Netatmo
+NetatmoTrueTempSync auth login
+
+# Clear stored credentials and session
+NetatmoTrueTempSync auth logout
+
 # Show current temperatures and device status
 NetatmoTrueTempSync status
 
