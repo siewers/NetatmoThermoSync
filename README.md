@@ -75,7 +75,7 @@ Keys are room names, values are sensor module names.
 
 ## Running as a service (macOS)
 
-Create a launchd plist at `~/Library/LaunchAgents/com.netatmo.thermosync.plist`:
+Create a launchd plist at `~/Library/LaunchAgents/io.github.siewers.netatmotruetempsync.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -83,7 +83,7 @@ Create a launchd plist at `~/Library/LaunchAgents/com.netatmo.thermosync.plist`:
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.netatmo.thermosync</string>
+    <string>io.github.siewers.netatmotruetempsync</string>
     <key>ProgramArguments</key>
     <array>
         <string>/Users/YOU/.local/bin/NetatmoTrueTempSync</string>
@@ -100,7 +100,7 @@ Create a launchd plist at `~/Library/LaunchAgents/com.netatmo.thermosync.plist`:
 ```
 
 ```sh
-launchctl load ~/Library/LaunchAgents/com.netatmo.thermosync.plist
+launchctl load ~/Library/LaunchAgents/io.github.siewers.netatmotruetempsync.plist
 ```
 
 ## License
