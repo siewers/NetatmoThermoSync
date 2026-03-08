@@ -1,4 +1,4 @@
-# NetatmoThermoSync
+# NetatmoTrueTempSync
 
 A CLI tool that syncs Netatmo Weather Station indoor module temperatures to smart radiator valve (NRV) true temperature corrections.
 
@@ -26,10 +26,10 @@ Rooms are matched to sensors by name (case-insensitive partial match), or explic
 dotnet publish -c Release
 
 # Authenticate
-./NetatmoThermoSync auth login
+./NetatmoTrueTempSync auth login
 
 # Clear stored credentials and session
-./NetatmoThermoSync auth logout
+./NetatmoTrueTempSync auth logout
 ```
 
 The `auth login` command prompts for your Netatmo email and password, then performs a web session login. Credentials and session tokens are stored securely using the OS secret store (Keychain on macOS, secret-tool on Linux, file-based fallback otherwise).
@@ -40,24 +40,24 @@ Use `auth logout` to clear all stored credentials and session data.
 
 ```sh
 # Show current temperatures and device status
-NetatmoThermoSync status
+NetatmoTrueTempSync status
 
 # Preview what would be synced
-NetatmoThermoSync sync --dry-run
+NetatmoTrueTempSync sync --dry-run
 
 # Sync true temperature corrections
-NetatmoThermoSync sync
+NetatmoTrueTempSync sync
 
 # Sync a specific home
-NetatmoThermoSync sync --home "My Home"
+NetatmoTrueTempSync sync --home "My Home"
 
 # Dump raw API data for debugging
-NetatmoThermoSync dump
+NetatmoTrueTempSync dump
 ```
 
 ## Sensor mapping
 
-By default, rooms are matched to indoor sensors by name. If your room and sensor names don't match, add a `sensor_map` to `~/.config/netatmo-thermosync/config.json`:
+By default, rooms are matched to indoor sensors by name. If your room and sensor names don't match, add a `sensor_map` to `~/.config/netatmo-truetempsync/config.json`:
 
 ```json
 {
@@ -83,15 +83,15 @@ Create a launchd plist at `~/Library/LaunchAgents/com.netatmo.thermosync.plist`:
     <string>com.netatmo.thermosync</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/YOU/.local/bin/NetatmoThermoSync</string>
+        <string>/Users/YOU/.local/bin/NetatmoTrueTempSync</string>
         <string>sync</string>
     </array>
     <key>StartInterval</key>
     <integer>600</integer>
     <key>StandardOutPath</key>
-    <string>/tmp/netatmo-thermosync.log</string>
+    <string>/tmp/netatmo-truetempsync.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/netatmo-thermosync.err</string>
+    <string>/tmp/netatmo-truetempsync.err</string>
 </dict>
 </plist>
 ```
