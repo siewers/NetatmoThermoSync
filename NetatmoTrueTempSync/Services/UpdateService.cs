@@ -6,13 +6,11 @@ namespace NetatmoTrueTempSync.Services;
 
 public static class UpdateService
 {
+    private const string BinaryName = "netatmo-truetempsync";
     private const string ReleasesApiUrl = "https://api.github.com/repos/siewers/NetatmoTrueTempSync/releases/latest";
 
-    public static string GetExpectedAssetName()
-    {
-        var rid = RuntimeInformation.RuntimeIdentifier;
-        return $"netatmo-truetempsync-{rid}";
-    }
+    public static string GetExpectedAssetName() =>
+        $"{BinaryName}-{RuntimeInformation.RuntimeIdentifier}";
 
     public static string? GetCurrentVersion()
     {
