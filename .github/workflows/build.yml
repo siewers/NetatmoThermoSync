@@ -92,7 +92,8 @@ jobs:
           -p:SelfContained=true
           -p:PublishSingleFile=true
           -p:PublishTrimmed=true
-          -p:AssemblyName=netatmo-truetempsync
+          -p:AssemblyName=netatmo-truetempsync-linux-arm64
+          -p:DebugType=none
           -p:Version=${{ steps.tag.outputs.new_version }}
           -o ${{ github.workspace }}/publish
 
