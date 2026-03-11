@@ -11,6 +11,11 @@ public static class ConfigStore
 
     private static string ConfigPath => Path.Combine(ConfigDir, "config.json");
 
+    private static readonly string LogDir = Path.Combine(
+        AppContext.BaseDirectory, "logs");
+
+    public static string LogPath => Path.Combine(LogDir, "sync.log");
+
     public static async Task<AppConfig> LoadAsync(CancellationToken cancellationToken = default)
     {
         if (!File.Exists(ConfigPath))

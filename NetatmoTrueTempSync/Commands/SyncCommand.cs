@@ -24,6 +24,7 @@ public static class SyncCommand
     {
         var config = await ConfigStore.LoadAsync(cancellationToken);
         using var client = new NetatmoClient(TokenStore.LoadCredentials());
+        await using var logger = await SyncLogger.CreateForFileAsync(ConfigStore.LogPath);
 
         if (dryRun)
         {
@@ -32,7 +33,7 @@ public static class SyncCommand
 
         try
         {
-            await RunSyncCycleAsync(client, dryRun, homeName, config, cancellationToken);
+            await RunSyncCycleAsync(client, dryRun, homeName, config, logger, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -43,7 +44,7 @@ public static class SyncCommand
         return 0;
     }
 
-    private static async Task RunSyncCycleAsync(NetatmoClient client, bool dryRun, string? homeName, AppConfig config, CancellationToken cancellationToken)
+    private static async Task RunSyncCycleAsync(NetatmoClient client, bool dryRun, string? homeName, AppConfig config, SyncLogger logger, CancellationToken cancellationToken)
     {
         var homesData = await client.GetHomesDataAsync(cancellationToken);
         var homes = homesData.Body?.Homes ?? [];
@@ -103,6 +104,7 @@ public static class SyncCommand
                 AnsiConsole.MarkupLine(
                     $"  [bold]{Markup.Escape(room.Name)}[/] — sensor [blue]{Markup.Escape(sensor.Name)}[/] [cyan]{sensor.Temperature:F1}°C[/], valve [yellow]{valveTemp:F1}°C[/] [dim](no correction needed)[/]");
 
+                await logger.LogAsync(room.Name, sensor.Name, sensor.Temperature, valveTemp, SyncAction.NoCorrection);
                 continue;
             }
 
@@ -111,6 +113,7 @@ public static class SyncCommand
                 AnsiConsole.MarkupLine(
                     $"  [bold]{Markup.Escape(room.Name)}[/] — sensor [blue]{Markup.Escape(sensor.Name)}[/] [cyan]{sensor.Temperature:F1}°C[/], valve [yellow]{valveTemp:F1}°C[/] (delta {delta:+0.0;-0.0}°C) [red]skipped — delta too large[/]");
 
+                await logger.LogAsync(room.Name, sensor.Name, sensor.Temperature, valveTemp, SyncAction.DeltaTooLarge);
                 continue;
             }
 
@@ -122,6 +125,7 @@ public static class SyncCommand
                 await client.SetTrueTemperatureAsync(home.Id, room.Id, valveTemp, sensor.Temperature, cancellationToken);
             }
 
+            await logger.LogAsync(room.Name, sensor.Name, sensor.Temperature, valveTemp, SyncAction.Synced);
             syncCount++;
         }
 
